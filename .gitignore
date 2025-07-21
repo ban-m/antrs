@@ -2,3 +2,5 @@
 /venv
 log
 out
+*.ipynb
+**/ipynb_checkpoints
