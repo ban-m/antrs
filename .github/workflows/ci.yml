@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
 
+env:
+  RUSTFLAGS: "-Dwarnings"
+
 jobs:
   formatting:
     name: Formatting
@@ -30,9 +33,7 @@ jobs:
           rustup default stable
           rustup component add clippy
       - name: Lint with clippy
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: cargo clippy --all-targets --all-features
 
   testing:
     name: Testing
