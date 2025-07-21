@@ -1,0 +1,20 @@
+[package]
+name = "antrs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85.0"
+authors = [
+    "Bansho Masutani <banmasutani@gmail.com>"
+]
+description = "Trait-based Rust library for reading AnnData (H5AD) files in single-cell RNA-seq."
+license = "MIT"
+repository = "https://github.com/ban-m/antrs"
+homepage = "https://github.com/ban-m/antrs"
+documentation = "https://github.com/ban-m/antrs#readme"
+readme = "README.md"
+keywords = ["AnnData", "single-cell", "bioinformatics", "h5ad"]
+categories = ["science", "data-processing", "bioinformatics"]
+exclude = ["venv"]
+
+[dependencies]
+hdf5-metno = "0.10.1"
