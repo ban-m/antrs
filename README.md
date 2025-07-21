@@ -1,4 +1,7 @@
+
 # Antrs: Read H5AD with your favorite struct
+
+[![CI](https://github.com/ban-m/antrs/actions/workflows/ci.yml/badge.svg)](https://github.com/ban-m/antrs/actions/workflows/ci.yml)
 
 **antrs** is a Rust library for reading [AnnData](https://anndata.readthedocs.io/en/latest/) files (HDF5 format) used in single-cell RNA-sequencing analysis.
 
