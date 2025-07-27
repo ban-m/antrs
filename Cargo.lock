@@ -16,6 +16,9 @@ name = "antrs"
 version = "0.1.0"
 dependencies = [
  "hdf5-metno",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

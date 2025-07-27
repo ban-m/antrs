@@ -1,3 +1,11 @@
+pub mod obs;
+pub mod var;
+pub mod layers;
+pub mod x_array;
+pub mod obsm;
+pub mod varm;
+
+
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
 }
