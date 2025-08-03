@@ -1,5 +1,7 @@
-///まずは一回、マクロを使わずに愚直にパーズを行う。
-
+use crate::anndata::*;
+//まずは一回、マクロを使わずに愚直にパーズを行う。
+use crate::error::ParseError;
+// これは具象構造体なので、ユーザーが定める。これから自動的にコードを生成するのが課題。
 #[derive(Debug, Clone, Copy)]
 pub enum LibraryInCompressed {
     #[allow(non_camel_case_types)]
@@ -8,8 +10,9 @@ pub enum LibraryInCompressed {
     libB,
 }
 
-impl LibraryInCompressed {
-    pub fn parse(group: &hdf5_metno::Group) -> Result<Vec<Self>, ParseError> {
+// 最終的にはマクロを使わない実装方法も提供しないとだめなので、トレイトからパーズを行うことにする。
+impl EnumInAnnData for LibraryInCompressed {
+    fn parse(group: &hdf5_metno::Group) -> Result<Vec<Self>, ParseError> {
         let categories = group.dataset("categories").map_err(ParseError::Hdf5Error)?;
         let cats_deserialized = categories
             .read_raw::<hdf5_metno::types::VarLenUnicode>()
@@ -49,8 +52,8 @@ pub enum BatchInCompressed {
     batch2,
 }
 
-impl BatchInCompressed {
-    pub fn parse(group: &hdf5_metno::Group) -> Result<Vec<Self>, ParseError> {
+impl EnumInAnnData for BatchInCompressed {
+    fn parse(group: &hdf5_metno::Group) -> Result<Vec<Self>, ParseError> {
         let categories = group.dataset("categories").map_err(ParseError::Hdf5Error)?;
         let cats_deserialized = categories
             .read_raw::<hdf5_metno::types::VarLenUnicode>()
@@ -89,17 +92,12 @@ pub struct ObsInCompressed {
     pub index: Vec<String>,
 }
 
-#[derive(Debug, Clone)]
-pub enum ParseError {
-    Hdf5Error(hdf5_metno::Error),
-    Other(String),
-}
-
-impl ObsInCompressed {
-    pub fn len(&self) -> usize {
+impl ObsInAnnData for ObsInCompressed {
+    fn len(&self) -> usize {
         self.index.len()
     }
-    pub fn parse(group: &hdf5_metno::Group) -> Result<Self, ParseError> {
+
+    fn parse(group: &hdf5_metno::Group) -> Result<Self, ParseError> {
         let batches = group.group("batch").map_err(ParseError::Hdf5Error)?;
         let batch = BatchInCompressed::parse(&batches)?;
         let libraries = group.group("library").map_err(ParseError::Hdf5Error)?;
@@ -125,11 +123,8 @@ pub struct VarInCompressed {
     pub is_hvg: Vec<bool>,
 }
 
-impl VarInCompressed {
-    pub fn len(&self) -> usize {
-        self.index.len()
-    }
-    pub fn parse(group: &hdf5_metno::Group) -> Result<Self, ParseError> {
+impl VarInAnnData for VarInCompressed {
+    fn parse(group: &hdf5_metno::Group) -> Result<Self, ParseError> {
         let index = group.dataset("_index").map_err(ParseError::Hdf5Error)?;
         let index: Vec<_> = index
             .read_raw::<hdf5_metno::types::VarLenUnicode>()
@@ -148,13 +143,16 @@ impl VarInCompressed {
             is_hvg,
         })
     }
+    fn len(&self) -> usize {
+        self.index.len()
+    }
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct ObsmInCompressed {}
 
-impl ObsmInCompressed {
-    pub fn parse(_group: &hdf5_metno::Group) -> Result<Self, ParseError> {
+impl ObsmInAnnData for ObsmInCompressed {
+    fn parse(_group: &hdf5_metno::Group) -> Result<Self, ParseError> {
         // Placeholder for actual parsing logic
         Ok(Self {})
     }
@@ -163,8 +161,8 @@ impl ObsmInCompressed {
 #[derive(Debug, Clone, Default)]
 pub struct VarmInCompressed {}
 
-impl VarmInCompressed {
-    pub fn parse(_group: &hdf5_metno::Group) -> Result<Self, ParseError> {
+impl VarmInAnnData for VarmInCompressed {
+    fn parse(_group: &hdf5_metno::Group) -> Result<Self, ParseError> {
         // Placeholder for actual parsing logic
         Ok(Self {})
     }
@@ -172,17 +170,17 @@ impl VarmInCompressed {
 
 #[derive(Debug, Clone, Default)]
 pub struct ObspInCompressed {}
-impl ObspInCompressed {
-    pub fn parse(_group: &hdf5_metno::Group) -> Result<Self, ParseError> {
-        // Placeholder for actual parsing logic
+impl ObspInAnnData for ObspInCompressed {
+    fn parse(_group: &hdf5_metno::Group) -> Result<Self, ParseError> {
         Ok(Self {})
     }
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct VarmpInCompressed {}
-impl VarmpInCompressed {
-    pub fn parse(_group: &hdf5_metno::Group) -> Result<Self, ParseError> {
+
+impl VarmpInAnnData for VarmpInCompressed {
+    fn parse(_group: &hdf5_metno::Group) -> Result<Self, ParseError> {
         // Placeholder for actual parsing logic
         Ok(Self {})
     }
@@ -191,8 +189,8 @@ impl VarmpInCompressed {
 #[derive(Debug, Clone, Default)]
 pub struct LayersInCompressed {}
 
-impl LayersInCompressed {
-    pub fn parse(_group: &hdf5_metno::Group) -> Result<Self, ParseError> {
+impl LayersInAnnData for LayersInCompressed {
+    fn parse(_group: &hdf5_metno::Group) -> Result<Self, ParseError> {
         // Placeholder for actual parsing logic
         Ok(Self {})
     }
@@ -205,12 +203,8 @@ impl LayersInCompressed {
 #[derive(Debug, Clone)]
 pub struct Count(Vec<Vec<f32>>);
 
-impl Count {
-    pub fn parse(
-        group: &hdf5_metno::Group,
-        n_obs: usize,
-        n_vars: usize,
-    ) -> Result<Self, ParseError> {
+impl XInAnnData for Count {
+    fn parse(group: &hdf5_metno::Group, n_obs: usize, n_vars: usize) -> Result<Self, ParseError> {
         let mut counts = vec![vec![0f32; n_vars]; n_obs];
         let data = group
             .dataset("data")
@@ -238,79 +232,60 @@ impl Count {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct AnnData {
-    pub obs: ObsInCompressed,
-    pub var: VarInCompressed,
-    pub obsm: ObsmInCompressed,
-    pub varm: VarmInCompressed,
-    pub obsp: ObspInCompressed,
-    pub varmp: VarmpInCompressed,
-    pub layers: LayersInCompressed,
-    pub x: Count,
-}
+pub type AnnDataCompressed = AnnData<
+    ObsInCompressed,
+    VarInCompressed,
+    ObsmInCompressed,
+    VarmInCompressed,
+    ObspInCompressed,
+    VarmpInCompressed,
+    LayersInCompressed,
+    Count,
+>;
 
-impl AnnData {
-    pub fn parse(contents: &hdf5_metno::File) -> Result<Self, ParseError> {
-        let obs = contents
-            .group("obs")
-            .map_err(ParseError::Hdf5Error)
-            .and_then(|obs| ObsInCompressed::parse(&obs))?;
-        let var = contents
-            .group("var")
-            .map_err(ParseError::Hdf5Error)
-            .and_then(|var| VarInCompressed::parse(&var))?;
-        let obsm = contents
-            .group("obsm")
-            .map_err(ParseError::Hdf5Error)
-            .and_then(|x| ObsmInCompressed::parse(&x))
-            .unwrap_or_default();
-        let varm = contents
-            .group("varm")
-            .map_err(ParseError::Hdf5Error)
-            .and_then(|x| VarmInCompressed::parse(&x))
-            .unwrap_or_default();
-        let obsp = contents
-            .group("obsp")
-            .map_err(ParseError::Hdf5Error)
-            .and_then(|x| ObspInCompressed::parse(&x))
-            .unwrap_or_default();
-        let varmp = contents
-            .group("varmp")
-            .map_err(ParseError::Hdf5Error)
-            .and_then(|x| VarmpInCompressed::parse(&x))
-            .unwrap_or_default();
-        let layers = contents
-            .group("layers")
-            .map_err(ParseError::Hdf5Error)
-            .and_then(|x| LayersInCompressed::parse(&x))
-            .unwrap_or_default();
-        let n_obs = obs.len();
-        let n_vars = var.len();
-        let x = contents
-            .group("X")
-            .map_err(ParseError::Hdf5Error)
-            .and_then(|x| Count::parse(&x, n_obs, n_vars))?;
-        Ok(Self {
-            obs,
-            var,
-            obsm,
-            varm,
-            obsp,
-            varmp,
-            layers,
-            x,
-        })
+#[cfg(test)]
+mod tests {
+    const TEST_FILE: &str = "./static/compressed.h5ad";
+    fn open_test_file() -> hdf5_metno::File {
+        hdf5_metno::File::open(TEST_FILE).unwrap()
     }
-}
-
-fn main() -> std::io::Result<()> {
-    let file = "./static/compressed.h5ad";
-    let contents = hdf5_metno::File::open(file).unwrap();
-    let adata = AnnData::parse(&contents).unwrap();
-    println!("{:?}", adata);
-    for count in adata.x.0.iter().take(10) {
-        println!("{:?}", count.iter().sum::<f32>());
+    use super::*;
+    #[test]
+    fn test_parse() {
+        // 結局パーズできるか見る
+        let contents = open_test_file();
+        assert!(AnnDataCompressed::parse(&contents).is_ok());
     }
-    Ok(())
+    #[test]
+    fn test_parse_content() {
+        let contents = open_test_file();
+        let (n_obs, n_vars) = (100, 20);
+        assert!(Count::parse(&contents.group("X").unwrap(), n_obs, n_vars).is_ok());
+    }
+    #[test]
+    fn test_parse_enum() {
+        let contents = open_test_file();
+        let group = contents.group("obs/library").unwrap();
+        assert!(LibraryInCompressed::parse(&group).is_ok());
+        let group = contents.group("obs/batch").unwrap();
+        assert!(BatchInCompressed::parse(&group).is_ok());
+    }
+    #[test]
+    fn test_parse_obs() {
+        let contents = open_test_file();
+        let group = contents.group("obs").unwrap();
+        assert!(ObsInCompressed::parse(&group).is_ok());
+    }
+    #[test]
+    fn test_parse_var() {
+        let contents = open_test_file();
+        let group = contents.group("var").unwrap();
+        assert!(VarInCompressed::parse(&group).is_ok());
+    }
+    #[test]
+    fn test_parse_layer() {
+        let contents = open_test_file();
+        let group = contents.group("layers").unwrap();
+        assert!(LayersInCompressed::parse(&group).is_ok());
+    }
 }
